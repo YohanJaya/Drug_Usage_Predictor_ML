@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# Reports
+reports/figures/*.png
+
+# Data
+data/*
+!data/.gitkeep
+
+# Models
+models/*
+!models/.gitkeep
+
+# IDEs
+.vscode/
+.idea/
