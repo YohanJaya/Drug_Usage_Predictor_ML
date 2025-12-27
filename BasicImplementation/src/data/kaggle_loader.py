@@ -1,11 +1,31 @@
 import pandas as pd
 import os
 import numpy as np
+from pathlib import Path
 
-def load_kaggle_data(csv_path, target_column="Sales", date_column="Date", drop_closed=True):
+def load_kaggle_data(csv_path=None, target_column="Sales", date_column="Date", drop_closed=True):
+    # If no path provided, default to the repository's data/Hyper.csv located two levels up from this file
+    if csv_path is None:
+        csv_path = Path(__file__).resolve().parents[2] / "data" / "Hyper.csv"
+    # Ensure we operate on an absolute path string
+    csv_path = os.path.abspath(str(csv_path))
+
     if not os.path.exists(csv_path):
-        raise FileNotFoundError(f"CSV file not found: {csv_path}")
-    df = pd.read_csv(csv_path, parse_dates=[date_column])
+        raise FileNotFoundError(
+            f"CSV file not found: {csv_path}\nCurrent working directory: {os.getcwd()}\n" \
+            "If you intended a relative path, pass the correct path or call load_kaggle_data(csv_path='...')"
+        )
+
+    # Read CSV first, then parse/validate date column to give clearer errors
+    df = pd.read_csv(csv_path)
+
+    if date_column not in df.columns:
+        raise KeyError(f"Date column '{date_column}' not found in CSV columns: {df.columns.tolist()}")
+
+    # Parse dates and ensure at least some values parsed
+    df[date_column] = pd.to_datetime(df[date_column], errors="coerce")
+    if df[date_column].isnull().all():
+        raise ValueError(f"All values in date column '{date_column}' could not be parsed as dates.")
 
     # Optional: remove closed stores (Open == 0) since Sales will be 0 or meaningless
     if drop_closed and "Open" in df.columns:

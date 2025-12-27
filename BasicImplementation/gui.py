@@ -83,9 +83,63 @@ class DrugUsagePredictorGUI:
             lbl = tk.Label(self.images_frame, bg="#e7eff6")
             lbl.grid(row=0, column=i, padx=5, pady=5)
             self.image_labels.append(lbl)
+        # Prediction input part
+        # Remove the 4 empty entry boxes, only show labeled input fields
+        self.input_frame = tk.LabelFrame(self.scrollable_frame, text="Predict Drug Usage", font=("Segoe UI", 14, "bold"), fg="#2b6777", bg="#e7eff6", bd=3, relief=tk.RIDGE, highlightbackground="#52ab98", highlightcolor="#52ab98", highlightthickness=3)
+        self.input_frame.pack(fill="x", padx=20, pady=10)
+        self.input_entries = []
+        self.input_labels = []
+        for fname in self.feature_names:
+            frame = tk.Frame(self.input_frame, bg="#e7eff6", highlightbackground="#52ab98", highlightcolor="#52ab98", highlightthickness=2, bd=1, relief=tk.SOLID)
+            frame.pack(side=tk.LEFT, padx=8, pady=8)
+            label = tk.Label(frame, text=fname+":", font=("Segoe UI", 13, "bold"), bg="#e7eff6", fg="#22223b")
+            label.pack(pady=4)
+            entry = tk.Entry(frame, width=18, font=("Segoe UI", 13), bg="#f0f4f8", relief=tk.FLAT, highlightbackground="#388087", highlightcolor="#388087", highlightthickness=1)
+            entry.pack(pady=4)
+            entry.config(state="normal")
+            self.input_entries.append(entry)
+            self.input_labels.append(label)
+        self.predict_button = tk.Button(self.input_frame, text="Predict", command=self.on_predict, font=("Segoe UI", 14, "bold"), bg="#388087", fg="white", activebackground="#52ab98", activeforeground="white", bd=2, relief=tk.RAISED, cursor="hand2")
+        self.predict_button.pack(side=tk.LEFT, padx=10, pady=10)
+        self.prediction_result = tk.Label(self.input_frame, text="", font=("Segoe UI", 14, "bold"), bg="#e7eff6", fg="#388087")
+        self.prediction_result.pack(side=tk.LEFT, padx=10)
+
+    def build_input_fields(self, feature_names):
+        for entry in getattr(self, 'input_entries', []):
+            entry.destroy()
+        for label in getattr(self, 'input_labels', []):
+            label.destroy()
+        self.input_entries = []
+        self.input_labels = []
+        for fname in feature_names:
+            frame = tk.Frame(self.input_frame, bg="#e7eff6", highlightbackground="#52ab98", highlightcolor="#52ab98", highlightthickness=2, bd=1, relief=tk.SOLID)
+            frame.pack(side=tk.LEFT, padx=8, pady=8)
+            label = tk.Label(frame, text=fname+":", font=("Segoe UI", 13, "bold"), bg="#e7eff6", fg="#22223b")
+            label.pack(pady=4)
+            entry = tk.Entry(frame, width=18, font=("Segoe UI", 13), bg="#f0f4f4", relief=tk.FLAT, highlightbackground="#388087", highlightcolor="#388087", highlightthickness=1)
+            entry.pack(pady=4)
+            entry.config(state="normal")
+            self.input_entries.append(entry)
+            self.input_labels.append(label)
+
+    def on_predict(self):
+        try:
+            if self.w is None or self.mean is None or self.std is None:
+                messagebox.showwarning("Warning", "Please run the pipeline first.")
+                return
+            values = [float(e.get()) for e in self.input_entries[:len(self.feature_names)]]
+            x = np.array(values)
+            x_norm = (x - self.mean) / self.std
+            y_pred = predict(x_norm.reshape(1, -1), self.w, self.b)
+            self.prediction_result.config(text=f"Predicted Usage: {y_pred[0]:.2f}")
+            # Clear all input fields after prediction
+            for entry in self.input_entries:
+                entry.delete(0, tk.END)
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
 
     def run_pipeline_with_animation(self):
-        self.input_frame.pack_forget()  # Hide prediction part while running pipeline
+        # Removed self.input_frame.pack_forget() since input frame is gone
         self.progress_label.config(text="Running pipeline...")
         self.progress['value'] = 0
         self.root.update_idletasks()
@@ -103,7 +157,7 @@ class DrugUsagePredictorGUI:
         time.sleep(0.5)
         self.progress['value'] = 0
         self.progress_label.config(text="")
-        self.input_frame.pack(fill="x", padx=20, pady=10)  # Show prediction part again
+        # Removed self.input_frame.pack(fill="x", padx=20, pady=10) since input frame is gone
 
     def run_pipeline(self):
         try:
