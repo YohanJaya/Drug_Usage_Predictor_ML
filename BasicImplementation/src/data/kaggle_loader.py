@@ -3,12 +3,17 @@ import os
 import numpy as np
 from pathlib import Path
 
-def load_kaggle_data(csv_path=None, target_column="Sales", date_column="Date", drop_closed=True):
+
+def load_kaggle_data(csv_path=None, target_column="Sales", date_column="Date", drop_closed=True, verbose=False, sample_rows=0):
     # If no path provided, default to the repository's data/Hyper.csv located two levels up from this file
     if csv_path is None:
         csv_path = Path(__file__).resolve().parents[2] / "data" / "Hyper.csv"
     # Ensure we operate on an absolute path string
     csv_path = os.path.abspath(str(csv_path))
+
+    if verbose:
+        print(f"Loading CSV from: {csv_path}")
+        print(f"Current working directory: {os.getcwd()}")
 
     if not os.path.exists(csv_path):
         raise FileNotFoundError(
@@ -16,8 +21,31 @@ def load_kaggle_data(csv_path=None, target_column="Sales", date_column="Date", d
             "If you intended a relative path, pass the correct path or call load_kaggle_data(csv_path='...')"
         )
 
-    # Read CSV first, then parse/validate date column to give clearer errors
-    df = pd.read_csv(csv_path)
+    # Quick sample read for debugging (fast) to avoid waiting on very large files
+    if sample_rows and sample_rows > 0:
+        if verbose:
+            print(f"Reading first {sample_rows} rows for quick check...")
+        df = pd.read_csv(csv_path, nrows=sample_rows)
+        if verbose:
+            print(f"Sample columns: {df.columns.tolist()}")
+    else:
+        # Full read: try once, provide informative messages if it hangs/errors
+        if verbose:
+            print("Reading full CSV (this may take a while for large files)...")
+        try:
+            df = pd.read_csv(csv_path, low_memory=False)
+        except Exception as e:
+            # Attempt a fallback using chunksize to avoid memory issues / hangs
+            if verbose:
+                print(f"Full read failed with: {e}\nAttempting chunked read to recover headers and a small sample...")
+            try:
+                it = pd.read_csv(csv_path, chunksize=10000)
+                first_chunk = next(it)
+                df = first_chunk.copy()
+                if verbose:
+                    print(f"Recovered first chunk with shape: {df.shape}")
+            except Exception as e2:
+                raise RuntimeError(f"Failed to read CSV file: {e}\nFallback failed: {e2}")
 
     if date_column not in df.columns:
         raise KeyError(f"Date column '{date_column}' not found in CSV columns: {df.columns.tolist()}")
@@ -83,4 +111,6 @@ def load_kaggle_data(csv_path=None, target_column="Sales", date_column="Date", d
     X = feature_df.values
     y = df[target_column].values
     feature_names = feature_df.columns.tolist()
+    if verbose:
+        print(f"Returning X shape: {X.shape}, y length: {len(y)}, features: {feature_names}")
     return X, y, feature_names
