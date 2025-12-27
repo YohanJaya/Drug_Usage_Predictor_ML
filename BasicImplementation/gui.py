@@ -203,14 +203,30 @@ class DrugUsagePredictorGUI:
             if self.w is None or self.mean is None or self.std is None:
                 messagebox.showwarning("Warning", "Please run the pipeline first.")
                 return
-            values = [float(e.get()) for e in self.input_entries[:len(self.feature_names)]]
-            x = np.array(values)
-            x_norm = (x - self.mean) / self.std
+            # Validate and collect inputs
+            values = []
+            for e in self.input_entries[:len(self.feature_names)]:
+                v = e.get().strip()
+                if v == "":
+                    messagebox.showwarning("Warning", "Please fill all input fields before predicting.")
+                    return
+                values.append(float(v))
+            x = np.array(values, dtype=float)
+            # Normalize using stored mean/std. Handle possible shape mismatch by slicing mean/std
+            if hasattr(self.mean, 'shape') and self.mean.shape == x.shape:
+                x_norm = (x - self.mean) / self.std
+            else:
+                x_norm = (x - self.mean[:x.shape[0]]) / self.std[:x.shape[0]]
             y_pred = predict(x_norm.reshape(1, -1), self.w, self.b)
-            self.prediction_result.config(text=f"Predicted Usage: {y_pred[0]:.2f}")
-            # Clear all input fields after prediction
-            for entry in self.input_entries:
-                entry.delete(0, tk.END)
+            text = f"Predicted Usage: {y_pred[0]:.2f}"
+            # Use animated reveal so text becomes visible (prediction_result initially uses bg-colored fg)
+            try:
+                self.animate_prediction_result(text)
+            except Exception:
+                # Fallback: directly set visible color
+                self.prediction_result.config(text=text, fg=self.primary_color)
+            # Clear input fields shortly after showing result so user can read it
+            self.root.after(900, lambda: [entry.delete(0, tk.END) for entry in self.input_entries])
         except Exception as e:
             messagebox.showerror("Error", str(e))
 
