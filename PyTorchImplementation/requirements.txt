@@ -1,5 +1,0 @@
-# PyTorch Implementation Dependencies
-numpy
-pandas
-matplotlib
-torch
