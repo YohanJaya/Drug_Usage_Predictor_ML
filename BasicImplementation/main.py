@@ -6,23 +6,12 @@ Now using combined real (Hyper.csv) + synthetic data
 
 import numpy as np
 from src.data import normalize_features, split_data
-from src.data.data_combiner import combine_datasets
 from src.models import train_model, predict, evaluate_model
 from src.utils import plot_cost_history, plot_predictions, plot_residuals, plot_feature_importance
 
 def main():
-    print("=" * 60)
-    print("Drug Usage Predictor - Linear Regression with Gradient Descent")
-    print("Combined Dataset: Real Pharmacy Data + Synthetic Data")
-    print("=" * 60)
-    
-    # 1. Load and combine datasets
-    print("\n1. Loading combined dataset (Hyper.csv + synthetic data)...")
-    X, y, metadata = combine_datasets(hyper_rows=50000, synthetic_days=200, random_state=42)
-    print(f"   Total samples: {X.shape[0]}")
-    print(f"   - Real pharmacy data: {metadata['hyper_samples']} samples")
-    print(f"   - Synthetic data: {metadata['synthetic_samples']} samples")
-    print(f"   Features: {X.shape[1]}")
+   
+   
     
     # 2. Split data
     print("\n2. Splitting data into train and test sets...")
@@ -54,9 +43,7 @@ def main():
     # 7. Visualize results
     print("\n7. Generating visualizations...")
     
-    # Feature names (unified across real + synthetic data)
-    feature_names = ['Customers/Patients', 'Day of Week', 'Is Holiday', 'Promo/Emergency']
-    
+
     # Get full predictions for plotting
     y_pred_full = predict(X_test_norm, w, b)
     
