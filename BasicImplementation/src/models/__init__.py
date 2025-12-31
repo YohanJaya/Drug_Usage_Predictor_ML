@@ -8,7 +8,6 @@ from .predict import predict
 from .evaluate import evaluate_model
 
 __all__ = [
-    "calCost",
     "calGradient",
     "gradientDescent",
     "train_model",

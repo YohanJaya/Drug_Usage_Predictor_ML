@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def normalize_features(X):
     """
     Normalize features using standardization
