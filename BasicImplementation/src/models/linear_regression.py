@@ -3,31 +3,31 @@ import numpy as np
 
 def calCost(xTrain, yTrain, w, b):
 
-    """
-    Docstring for calCost
-    
-    Args:
-        xTrain (ndarray (m,n)): Data, m examples with n features
-        yTrain (ndarray (m,)): target values
-        w (ndarray (n,)): model parameters
-        b (scalar)    : model parameter
+        """
+        Docstring for calCost
+        
+        Args:
+            xTrain (ndarray (m,n)): Data, m examples with n features
+            yTrain (ndarray (m,)): target values
+            w (ndarray (n,)): model parameters
+            b (scalar)    : model parameter
 
-    Returns:
-        totalCost(int)
-    """
+        Returns:
+            totalCost(int)
+        """
 
-    n = xTrain.shape[0]
-    m = xTrain.shape[1]
-    totalCost = 0
+        m = xTrain.shape[0]
+        n = xTrain.shape[1]
+        totalCost = 0
 
-    for i in range(n):
-        f_wb = np.dot(w, xTrain[i]) + b
-        totalCost += (f_wb - yTrain[i]) ** 2
+        for i in range(m):
+            f_wb = np.dot(w, xTrain[i]) + b
+            totalCost += (f_wb - yTrain[i]) ** 2
 
-    totalCost = totalCost / (2 * n)
-    return totalCost
+        totalCost = totalCost / (2 * m)
+        return totalCost
 
-def calGradient(xTrain, yTrain, w, b):
+def calGradient(xTrain, yTrain, w, b, lambda_= 1):
 
     """
     Docstring for calGradient
@@ -37,28 +37,33 @@ def calGradient(xTrain, yTrain, w, b):
         yTrain (ndarray (m,)): target values
         w (ndarray (n,)): model parameters
         b (scalar)    : model parameter
+        lambda_ (float): regularization parameter
 
     Returns:
         dj_dw (ndarray (n,)): gradient w.r.t. w
         dj_db (scalar)      : gradient w.r.t. b
     """
 
-    n = xTrain.shape[0]
-    m = xTrain.shape[1]
+    m = xTrain.shape[0]
+    n = xTrain.shape[1]
 
     dw = np.zeros(m)
     db = 0
 
-    for i in range(n):
+    for i in range(m):
         f_wb = np.dot(w, xTrain[i]) + b
 
-        for j in range(m):
-            dw[j] += (f_wb - yTrain[i]) * xTrain[i][j]
+        for j in range(n):
+            dw[j] += (f_wb - yTrain[i]) * xTrain[i][j] 
 
         db += (f_wb - yTrain[i])
 
-    dj_dw = dw / n
-    dj_db = db / n
+    dj_dw = dw / m
+    dj_db = db / m
+
+    for j in range(n):
+        dj_dw[j] += (lambda_ / m) * w[j]
+        
     return dj_dw, dj_db
 
 def gradientDescent(xTrain, yTrain, w_in, b_in, alpha, num_iters):
