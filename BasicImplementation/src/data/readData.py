@@ -71,6 +71,10 @@ def read_data(filePath):
         .std()
     )
 
+    # One-hot encode 'Drug'
+    df = pd.get_dummies(df, columns=['Drug'])
+
+
 
     return df
 
@@ -78,6 +82,6 @@ def read_data(filePath):
 df = read_data('data/hospital_drug_demand.csv')
 df = df.dropna().reset_index(drop=True)
 
-print(df[df['Drug'] == 'Drug_10'].head(10))
+print(df.head(10))
 
 

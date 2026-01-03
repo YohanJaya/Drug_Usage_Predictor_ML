@@ -1,40 +1,22 @@
 import numpy as np
 from .predict import predict
+from sklearn.metrics import mean_squared_error, mean_absolute_error
 
-def evaluate_model(X_test, y_test, w, b):
-    """
-    Evaluate model performance using various metrics
+def evaluate_model(yTest, predictions):
+
     
-    Args:
-        X_test (ndarray (m,n)): Test feature matrix
-        y_test (ndarray (m,)): Test target values
-        w (ndarray (n,)): Model weights
-        b (scalar): Model bias
-        
-    Returns:
-        metrics (dict): Dictionary containing evaluation metrics
-    """
-    y_pred = predict(X_test, w, b)
-
-    mae = np.mean(np.abs(y_pred - y_test))
-    mse = np.mean((y_pred - y_test) ** 2)
+    mse = mean_squared_error(yTest, predictions)
+    mae = mean_absolute_error(yTest, predictions)
     rmse = np.sqrt(mse)
     
-    # R-squared
-    ss_res = np.sum((y_test - y_pred) ** 2)
-    ss_tot = np.sum((y_test - np.mean(y_test)) ** 2)
-    r2 = 1 - (ss_res / ss_tot)
+    print(f"Model Evaluation Metrics:")
 
-    metrics = {
-        'mae': mae,
+    print(f"MAE: {mae:.2f}")
+    print(f"RMSE: {rmse:.2f}")
+   
+    return {
         'mse': mse,
-        'rmse': rmse,
-        'r2': r2
+        'mae': mae,
+        'rmse': rmse
     }
-    
-    print("Mean Absolute Error:", round(mae, 2))
-    print("Mean Squared Error:", round(mse, 2))
-    print("Root Mean Squared Error:", round(rmse, 2))
-    print("R-squared:", round(r2, 4))
-    
-    return metrics
+ 

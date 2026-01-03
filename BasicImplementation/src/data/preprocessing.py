@@ -2,7 +2,7 @@ import numpy as np
 
 
 
-def split_data():
+def split_data(df):
     
     splitIndex = int(0.8 * len(df))
 

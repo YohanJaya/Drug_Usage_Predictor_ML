@@ -1,34 +1,32 @@
+import xgboost as xgb
+
 import numpy as np
-from .linear_regression import gradientDescent
+from preprocessing import split_data
 
-def train_model(X_train, y_train, alpha=0.01, num_iters=10000):
+
+def train_model(xTrain, yTrain):
     """
-    Train linear regression model using gradient descent
-    
-    Args:
-        X_train (ndarray (m,n)): Training feature matrix
-        y_train (ndarray (m,)): Training target values
-        alpha (float): Learning rate
-        num_iters (int): Number of iterations
-        
+    Train an XGBoost regression model.
+
+    Parameters:
+    xTrain (pd.DataFrame): Training features.
+    yTrain (pd.Series): Training target variable.
+
     Returns:
-        w (ndarray (n,)): Trained weights
-        b (scalar): Trained bias
-        J_history (list): Cost history
+    model: Trained XGBoost model.
     """
-    w_init = np.zeros(X_train.shape[1])
-    b_init = 0
-
-    w, b, J_history = gradientDescent(
-        X_train,
-        y_train,
-        w_init,
-        b_init,
-        alpha=alpha,
-        num_iters=num_iters
+    # Create XGBoost regressor
+    model = xgb.XGBRegressor(
+        objective='reg:squarederror',  # regression
+        n_estimators=500,
+        learning_rate=0.05,
+        max_depth=5,
+        subsample=0.8,
+        colsample_bytree=0.8,
+        random_state=42
     )
 
-    print("Trained weights:", w)
-    print("Trained bias:", b)
-    
-    return w, b, J_history
+    # Fit the model
+    model.fit(xTrain, yTrain)
+
+    return model
