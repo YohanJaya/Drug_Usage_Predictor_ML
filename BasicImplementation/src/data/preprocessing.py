@@ -10,11 +10,12 @@ def split_data(df):
     test_df = df.iloc[splitIndex:]
 
     target = 'Demand'
+    # Exclude target, date columns, and other non-feature columns
+    exclude_columns = {target, 'Date', 'year_week'}
     features = []
 
     for c in df.columns:
-
-        if c != targer and c != 'Date':
+        if c not in exclude_columns:
             features.append(c)
 
     xTrain = train_df[features]

@@ -27,13 +27,14 @@ def plot_cost_history(J_history, save_path=None):
     plt.tight_layout()
     plt.show()
 
-def plot_predictions(y_test, y_pred, save_path=None):
+def plot_predictions(y_test, y_pred, title='Actual vs Predicted Values', save_path=None):
     """
     Plot actual vs predicted values
     
     Args:
         y_test (ndarray): Actual values
         y_pred (ndarray): Predicted values
+        title (str): Plot title
         save_path (str): Path to save the figure (optional)
     """
     plt.figure(figsize=(10, 6))
@@ -48,24 +49,24 @@ def plot_predictions(y_test, y_pred, save_path=None):
     
     plt.xlabel('Actual Drug Usage', fontsize=12)
     plt.ylabel('Predicted Drug Usage', fontsize=12)
-    plt.title('Actual vs Predicted Values', fontsize=14, fontweight='bold')
+    plt.title(title, fontsize=14, fontweight='bold')
     plt.legend(fontsize=10)
     plt.grid(True, alpha=0.3)
     
     if save_path:
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        print(f"   Predictions plot saved to {save_path}")
     
     plt.tight_layout()
-    plt.show()
+    plt.close()
 
-def plot_residuals(y_test, y_pred, save_path=None):
+def plot_residuals(y_test, y_pred, title='Residual Analysis', save_path=None):
     """
     Plot residuals (errors) distribution
     
     Args:
         y_test (ndarray): Actual values
         y_pred (ndarray): Predicted values
+        title (str): Plot title
         save_path (str): Path to save the figure (optional)
     """
     residuals = y_test - y_pred
@@ -88,12 +89,13 @@ def plot_residuals(y_test, y_pred, save_path=None):
     axes[1].set_title('Distribution of Residuals', fontsize=13, fontweight='bold')
     axes[1].grid(True, alpha=0.3, axis='y')
     
+    fig.suptitle(title, fontsize=14, fontweight='bold', y=1.02)
+    
     if save_path:
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        print(f"   Residuals plot saved to {save_path}")
     
     plt.tight_layout()
-    plt.show()
+    plt.close()
 
 def plot_feature_importance(w, feature_names=None, save_path=None):
     """

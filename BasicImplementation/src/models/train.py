@@ -1,20 +1,25 @@
-import xgboost as xgb
-
 import numpy as np
-from preprocessing import split_data
+import xgboost as xgb
 
 
 def train_model(xTrain, yTrain):
     """
-    Train an XGBoost regression model.
+    Train an XGBoost regression model with log-transformed target.
+    
+    The target variable is log-transformed to handle skewed demand distribution,
+    reduce spike dominance, and improve learning smoothness.
 
     Parameters:
     xTrain (pd.DataFrame): Training features.
     yTrain (pd.Series): Training target variable.
 
     Returns:
-    model: Trained XGBoost model.
+    model: Trained XGBoost model (trained on log-transformed target).
     """
+    # Log-transform the target to handle skewed distribution
+    # Using log1p (log(1 + x)) to handle zero values safely
+    yTrain_log = np.log1p(yTrain)
+    
     # Create XGBoost regressor
     model = xgb.XGBRegressor(
         objective='reg:squarederror',  # regression
@@ -26,7 +31,7 @@ def train_model(xTrain, yTrain):
         random_state=42
     )
 
-    # Fit the model
-    model.fit(xTrain, yTrain)
+    # Fit the model on log-transformed target
+    model.fit(xTrain, yTrain_log)
 
     return model
