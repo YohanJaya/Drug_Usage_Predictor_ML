@@ -25,10 +25,19 @@ def read_data(filePath):
     )
     df = df.sort_values(["Drug", "Date"]).reset_index(drop=True)
 
-    #testing
-    print(df.head(10))
-    print(df.shape)
-    print(df.duplicated(subset=["Date", "Drug"]).sum())
+
+
+    # Extract date features
+    # Day of the week (0 = Monday, 6 = Sunday)
+    df["day_of_week"] = df["Date"].dt.dayofweek
+
+    # Week of the year (1-52)
+    df["week_of_year"] = df["Date"].dt.isocalendar().week.astype(int)
+    # Month (1-12)
+    df["month"] = df["Date"].dt.month
+
+    # Weekend flag (1 = Saturday/Sunday, 0 = weekday)
+    df["is_weekend"] = df["day_of_week"].isin([5, 6]).astype(int)
 
 
     return df
