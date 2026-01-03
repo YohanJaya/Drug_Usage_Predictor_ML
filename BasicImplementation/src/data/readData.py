@@ -48,13 +48,36 @@ def read_data(filePath):
             .shift(lag)
         )
 
+    
+    # ROLLING FEATURES 
+    df["rolling_mean_7"] = (
+        df.groupby("Drug")["Demand"]
+        .shift(1)
+        .rolling(window=7)
+        .mean()
+    )
+
+    df["rolling_mean_14"] = (
+        df.groupby("Drug")["Demand"]
+        .shift(1)
+        .rolling(window=14)
+        .mean()
+    )
+
+    df["rolling_std_7"] = (
+        df.groupby("Drug")["Demand"]
+        .shift(1)
+        .rolling(window=7)
+        .std()
+    )
+
+
     return df
 
 
 df = read_data('data/hospital_drug_demand.csv')
-
 df = df.dropna().reset_index(drop=True)
-print(df[df['Drug'] == 'Drug_10'].head(10))
 
+print(df[df['Drug'] == 'Drug_10'].head(10))
 
 
