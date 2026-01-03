@@ -39,9 +39,22 @@ def read_data(filePath):
     # Weekend flag (1 = Saturday/Sunday, 0 = weekday)
     df["is_weekend"] = df["day_of_week"].isin([5, 6]).astype(int)
 
+    # Create lag features
+    LAGS = [1, 7, 14, 28]
+    for lag in LAGS:
+        df[f"lag_{lag}"] = (
+            df
+            .groupby("Drug")["Demand"]
+            .shift(lag)
+        )
 
     return df
 
 
+df = read_data('data/hospital_drug_demand.csv')
 
-read_data('data/hospital_drug_demand.csv')
+df = df.dropna().reset_index(drop=True)
+print(df[df['Drug'] == 'Drug_10'].head(10))
+
+
+
