@@ -1,45 +1,45 @@
 """
 Multi-Drug Usage Prediction Pipeline
-Trains one XGBoost model per drug with proper data isolation
+Trains one XGBoost model per drug
 """
 
 import os
 import pandas as pd
-from src.data import split_data, read_data_single_drug, get_available_drugs
+from src.data import split_data, read_data_single_drug
 from src.models import train_model, predict, evaluate_model
 from src.utils import plot_predictions, plot_residuals
 
 
-def train_drug_model(drug_name, file_path):
+def train_drug_model(drug_name, file_path, quantile=0.5):
     """
-    Train a model for a single drug.
+    Train a quantile regression model for a single drug.
     
     Args:
-        drug_name: Name of the drug (e.g., 'Drug_1')
+        drug_name: Name of the drug
         file_path: Path to the data CSV
+        quantile: Quantile to predict (default 0.5 for median)
     
     Returns:
         dict containing model, metrics, and predictions
     """
-    # Load data for this specific drug only
+    # Load data
     df = read_data_single_drug(file_path, drug_name=drug_name)
     df = df.dropna().reset_index(drop=True)
     
-    # Check if we have enough data
     if len(df) < 50:
         return None
     
-    # Split data (no leakage - each drug's data is independent)
-    xTrain, yTrain, xTest, yTest = split_data(df)
+    # Split data (no validation split)
+    xTrain, yTrain, xTest, yTest = split_data(df, validation_split=False)
     
-    # Train model
-    model = train_model(xTrain, yTrain)
+    # Train model with quantile regression
+    model = train_model(xTrain, yTrain, quantile=quantile)
     
     # Make predictions
     predictions = predict(model, xTest)
     
     # Evaluate
-    metrics = evaluate_model(yTest, predictions)
+    metrics = evaluate_model(yTest, predictions, quantile=quantile)
     
     return {
         'model': model,
@@ -47,103 +47,62 @@ def train_drug_model(drug_name, file_path):
         'predictions': predictions,
         'yTest': yTest,
         'n_train': len(xTrain),
-        'n_test': len(xTest)
+        'n_test': len(xTest),
+        'quantile': quantile
     }
 
 
 def main():
     print("=" * 70)
-    print("MULTI-DRUG USAGE PREDICTOR")
-    print("Training individual XGBoost models for each drug")
+    print("DRUG_1 USAGE PREDICTOR")
+    print("XGBoost Quantile Regression for Drug_1")
     print("=" * 70)
     
-    # Configuration
     data_file = 'data/hospital_drug_demand.csv'
     models_dir = 'models'
     
-    # Get all available drugs from the dataset
-    print("\n1. Discovering drugs in dataset...")
-    drugs = get_available_drugs(data_file)
-    print(f"   Found {len(drugs)} drugs: {', '.join(drugs)}")
+    os.makedirs(models_dir, exist_ok=True)
     
-    # Train models for all drugs
-    print("\n2. Training models...")
-    results = {}
+    # Focus only on Drug_1
+    drug = 'Drug_1'
+    quantile = 0.5  # Very high quantile for maximum coverage
     
-    for drug in drugs:
-        print(f"\n   Training {drug}...")
-        result = train_drug_model(drug, data_file)
-        
-        if result is None:
-            print(f"      ⚠ Skipped {drug} - insufficient data")
-            continue
-        
-        results[drug] = result
-        print(f"      ✓ Train samples: {result['n_train']}, Test samples: {result['n_test']}")
-        print(f"      ✓ MAE: {result['metrics']['mae']:.2f}, RMSE: {result['metrics']['rmse']:.2f}, MAPE: {result['metrics']['mape']:.2f}%")
+    print(f"\nTraining quantile regression model for {drug} (quantile={quantile})...")
+    result = train_drug_model(drug, data_file, quantile=quantile)
     
-    # Save models
-    print("\n3. Saving models...")
+    if result is None:
+        print(f"   Error - insufficient data")
+        return
+    
+    print(f"   Train samples: {result['n_train']}")
+    print(f"   Test samples: {result['n_test']}")
+    print(f"   MAE: {result['metrics']['mae']:.2f}")
+    print(f"   Quantile Loss: {result['metrics']['quantile_loss']:.4f}")
+    
+    print("\nSaving model...")
     import joblib
-    for drug, result in results.items():
-        model_path = os.path.join(models_dir, f'{drug}_model.pkl')
-        joblib.dump(result['model'], model_path)
-        print(f"   ✓ Saved {drug} model to {model_path}")
+    model_path = os.path.join(models_dir, f'{drug}_model.pkl')
+    joblib.dump(result['model'], model_path)
+    print(f"   Model saved to: {model_path}")
     
-    # Create summary table
-    print("\n" + "=" * 70)
-    print("EVALUATION SUMMARY - DAILY MODELS")
-    print("=" * 70)
-    
-    summary_data = []
-    for drug, result in results.items():
-        summary_data.append({
-            'Drug': drug,
-            'Train_Samples': result['n_train'],
-            'Test_Samples': result['n_test'],
-            'MAE': f"{result['metrics']['mae']:.2f}",
-            'RMSE': f"{result['metrics']['rmse']:.2f}",
-            'MAPE': f"{result['metrics']['mape']:.2f}%"
-        })
-    
-    summary_df = pd.DataFrame(summary_data)
-    print("\n", summary_df.to_string(index=False))
-    
-    # Save summary to CSV
-    summary_path = 'reports/model_evaluation_summary.csv'
-    os.makedirs('reports', exist_ok=True)
-    summary_df.to_csv(summary_path, index=False)
-    print(f"\n   Summary saved to {summary_path}")
-
-    
-    # Generate visualizations for each drug
-    print("\n4. Generating visualizations...")
+    print("\nGenerating visualizations...")
     figures_dir = 'reports/figures'
     os.makedirs(figures_dir, exist_ok=True)
     
-    for drug, result in results.items():
-        # Predictions plot
-        plot_predictions(
-            result['yTest'], 
-            result['predictions'],
-            title=f'{drug} - Predictions vs Actual',
-            save_path=os.path.join(figures_dir, f'{drug}_predictions.png')
-        )
-        
-        # Residuals plot
-        plot_residuals(
-            result['yTest'],
-            result['predictions'],
-            title=f'{drug} - Residuals',
-            save_path=os.path.join(figures_dir, f'{drug}_residuals.png')
-        )
+    plot_predictions(
+        result['yTest'], 
+        result['predictions'],
+        save_path=os.path.join(figures_dir, f'{drug}_predictions.png')
+    )
+    plot_residuals(
+        result['yTest'],
+        result['predictions'],
+        save_path=os.path.join(figures_dir, f'{drug}_residuals.png')
+    )
     
-    print(f"   ✓ Saved {len(results)} sets of visualizations to {figures_dir}/")
-    
-    print("\n" + "=" * 70)
-    print("PIPELINE COMPLETED SUCCESSFULLY")
-    print(f"Trained {len(results)} models | All models saved | Summary generated")
-    print("=" * 70)
+    print(f"\nDone! {drug} model trained successfully.")
+    print(f"   Predictions plot: {figures_dir}/{drug}_predictions.png")
+    print(f"   Residuals plot: {figures_dir}/{drug}_residuals.png")
 
 
 if __name__ == "__main__":

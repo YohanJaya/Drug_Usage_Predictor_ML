@@ -1,37 +1,35 @@
-import numpy as np
 import xgboost as xgb
+import numpy as np
 
 
-def train_model(xTrain, yTrain):
+def train_model(xTrain, yTrain, quantile=0.9):
     """
-    Train an XGBoost regression model with log-transformed target.
-    
-    The target variable is log-transformed to handle skewed demand distribution,
-    reduce spike dominance, and improve learning smoothness.
-
-    Parameters:
-    xTrain (pd.DataFrame): Training features.
-    yTrain (pd.Series): Training target variable.
-
-    Returns:
-    model: Trained XGBoost model (trained on log-transformed target).
+    Train an XGBoost Quantile Regression model
+    WITHOUT using a validation set.
     """
-    # Log-transform the target to handle skewed distribution
-    # Using log1p (log(1 + x)) to handle zero values safely
-    yTrain_log = np.log1p(yTrain)
-    
-    # Create XGBoost regressor
+
     model = xgb.XGBRegressor(
-        objective='reg:squarederror',  # regression
-        n_estimators=500,
-        learning_rate=0.05,
-        max_depth=5,
+        objective="reg:quantileerror",
+        quantile_alpha=quantile,
+
+        n_estimators=3000,
+        learning_rate=0.005,
+
+        max_depth=6,
+        min_child_weight=3,
+
         subsample=0.8,
         colsample_bytree=0.8,
-        random_state=42
+        colsample_bylevel=0.9,
+
+        gamma=0.05,
+        reg_alpha=0.05,
+        reg_lambda=1.0,
+
+        random_state=42,
+        n_jobs=-1
     )
 
-    # Fit the model on log-transformed target
-    model.fit(xTrain, yTrain_log)
+    model.fit(xTrain, yTrain, verbose=False)
 
     return model

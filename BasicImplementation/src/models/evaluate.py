@@ -1,47 +1,36 @@
 import numpy as np
-from sklearn.metrics import mean_squared_error, mean_absolute_error
+from sklearn.metrics import mean_absolute_error
 
-def evaluate_model(yTest, predictions):
+
+def quantile_loss(y_true, y_pred, q):
     """
-    Evaluate model performance with multiple metrics.
-    
-    Args:
-        yTest: Actual values
-        predictions: Predicted values
-    
-    Returns:
-        dict with mse, mae, rmse, mape
+    Pinball (quantile) loss
     """
-    mse = mean_squared_error(yTest, predictions)
+    return np.mean(
+        np.maximum(q * (y_true - y_pred),
+                   (q - 1) * (y_true - y_pred))
+    )
+
+
+def evaluate_model(yTest, predictions, quantile):
+    """
+    Evaluate quantile regression properly.
+    """
+
+    # MAE only as a sanity check
     mae = mean_absolute_error(yTest, predictions)
-    rmse = np.sqrt(mse)
-    
-    # Calculate MAPE (Mean Absolute Percentage Error) - relative error
-    # Only include samples where actual value > threshold to avoid division issues
-    threshold = 10  # Ignore very small actual values
-    mask = np.abs(yTest) > threshold
-    
-    if mask.sum() > 0:
-        mape = np.mean(np.abs((yTest[mask] - predictions[mask]) / yTest[mask])) * 100
-    else:
-        mape = np.nan
-    
-    print(f"Model Evaluation Metrics:")
-    print(f"MAE: {mae:.2f}")
-    print(f"RMSE: {rmse:.2f}")
-    if not np.isnan(mape):
-        print(f"MAPE: {mape:.2f}%")
-    else:
-        print(f"MAPE: N/A (insufficient non-zero samples)")
-   
+
+    # Proper metric for quantile regression
+    qloss = quantile_loss(yTest, predictions, quantile)
+
+    coverage = (yTest <= predictions).mean()
+    print(f"Coverage of {quantile}-quantile predictions: {coverage:.2%}")
+
+    print("Model Evaluation:")
+    print(f"MAE (sanity check): {mae:.2f}")
+    print(f"Quantile Loss (q={quantile}): {qloss:.4f}")
+
     return {
-        'mse': mse,
-        'mae': mae,
-        'rmse': rmse,
-        'mape': mape
+        "mae": mae,
+        "quantile_loss": qloss
     }
-
-
-if __name__ == "__main__":
-    print("Evaluate module loaded. Use evaluate_model(yTest, predictions) to evaluate.")
-
