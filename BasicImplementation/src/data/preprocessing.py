@@ -1,53 +1,26 @@
-import numpy as np
-
-
-def split_data(df, validation_split=True):
+def split_data(df, test_size=0.2, validation_split=False):
     """
-    Split data into training, validation (optional), and testing sets.
-    Uses temporal split to respect time series nature.
+    Temporal train-test split (no validation set for competition).
     
     Args:
-        df: DataFrame with features and target
-        validation_split: If True, creates train/val/test split (70/10/20)
-                         If False, creates train/test split (80/20)
+        df: DataFrame with features
+        test_size: Fraction of data for test set
+        validation_split: Ignored for compatibility (always False)
     
     Returns:
-        If validation_split=True: xTrain, yTrain, xVal, yVal, xTest, yTest
-        If validation_split=False: xTrain, yTrain, xTest, yTest
+        xTrain, yTrain, xTest, yTest
     """
-    target = 'Demand'
-    features = [c for c in df.columns if c not in ['Demand', 'Date', 'year_week']]
+    # Separate features and target
+    X = df.drop(columns=['Demand', 'Date'])
+    y = df['Demand']
     
-    if validation_split:
-        # 70% train, 10% validation, 20% test
-        train_end = int(0.7 * len(df))
-        val_end = int(0.8 * len(df))
-        
-        train_df = df.iloc[:train_end]
-        val_df = df.iloc[train_end:val_end]
-        test_df = df.iloc[val_end:]
-        
-        xTrain = train_df[features]
-        yTrain = train_df[target]
-        
-        xVal = val_df[features]
-        yVal = val_df[target]
-        
-        xTest = test_df[features]
-        yTest = test_df[target]
-        
-        return xTrain, yTrain, xVal, yVal, xTest, yTest
-    else:
-        # 80% train, 20% test (original behavior)
-        splitIndex = int(0.8 * len(df))
-        
-        train_df = df.iloc[:splitIndex]
-        test_df = df.iloc[splitIndex:]
-        
-        xTrain = train_df[features]
-        yTrain = train_df[target]
-        
-        xTest = test_df[features]
-        yTest = test_df[target]
-        
-        return xTrain, yTrain, xTest, yTest
+    # Temporal split
+    split_idx = int(len(df) * (1 - test_size))
+    
+    xTrain = X.iloc[:split_idx]
+    yTrain = y.iloc[:split_idx]
+    xTest = X.iloc[split_idx:]
+    yTest = y.iloc[split_idx:]
+    
+    return xTrain, yTrain, xTest, yTest
+

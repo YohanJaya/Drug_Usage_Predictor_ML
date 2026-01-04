@@ -1,8 +1,10 @@
 import numpy as np
 
 def predict(model, xTest):
+
     """
     Make quantile predictions.
+    
     """
 
     predictions = model.predict(xTest)

@@ -1,108 +1,107 @@
 """
-Multi-Drug Usage Prediction Pipeline
-Trains one XGBoost model per drug
+Simple Drug Demand Prediction Pipeline
 """
 
 import os
 import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
 from src.data import split_data, read_data_single_drug
 from src.models import train_model, predict, evaluate_model
-from src.utils import plot_predictions, plot_residuals
 
+# Configuration
+DRUG_NAME = 'Drug_1'
+QUANTILE = 0.9
+DATA_FILE = 'data/hospital_drug_demand.csv'
+FIGURES_DIR = 'reports/figures'
 
-def train_drug_model(drug_name, file_path, quantile=0.5):
-    """
-    Train a quantile regression model for a single drug.
-    
-    Args:
-        drug_name: Name of the drug
-        file_path: Path to the data CSV
-        quantile: Quantile to predict (default 0.5 for median)
-    
-    Returns:
-        dict containing model, metrics, and predictions
-    """
-    # Load data
-    df = read_data_single_drug(file_path, drug_name=drug_name)
-    df = df.dropna().reset_index(drop=True)
-    
-    if len(df) < 50:
-        return None
-    
-    # Split data (no validation split)
-    xTrain, yTrain, xTest, yTest = split_data(df, validation_split=False)
-    
-    # Train model with quantile regression
-    model = train_model(xTrain, yTrain, quantile=quantile)
-    
-    # Make predictions
-    predictions = predict(model, xTest)
-    
-    # Evaluate
-    metrics = evaluate_model(yTest, predictions, quantile=quantile)
-    
-    return {
-        'model': model,
-        'metrics': metrics,
-        'predictions': predictions,
-        'yTest': yTest,
-        'n_train': len(xTrain),
-        'n_test': len(xTest),
-        'quantile': quantile
-    }
+os.makedirs(FIGURES_DIR, exist_ok=True)
 
 
 def main():
-    print("=" * 70)
-    print("DRUG_1 USAGE PREDICTOR")
-    print("XGBoost Quantile Regression for Drug_1")
-    print("=" * 70)
+    print("="*70)
+    print(f"Training {DRUG_NAME} with Quantile={QUANTILE}")
+    print("="*70)
     
-    data_file = 'data/hospital_drug_demand.csv'
-    models_dir = 'models'
+    # Load and prepare data
+    df = read_data_single_drug(DATA_FILE, drug_name=DRUG_NAME)
+    xTrain, yTrain, xTest, yTest = split_data(df)
     
-    os.makedirs(models_dir, exist_ok=True)
+    print(f"Train samples: {len(xTrain)}, Test samples: {len(xTest)}")
     
-    # Focus only on Drug_1
-    drug = 'Drug_1'
-    quantile = 0.5  # Very high quantile for maximum coverage
+    # Train model
+    model = train_model(xTrain, yTrain, quantile=QUANTILE)
     
-    print(f"\nTraining quantile regression model for {drug} (quantile={quantile})...")
-    result = train_drug_model(drug, data_file, quantile=quantile)
+    # Predict
+    yPred = predict(model, xTest)
     
-    if result is None:
-        print(f"   Error - insufficient data")
-        return
+    # Evaluate
+    metrics = evaluate_model(yTest, yPred, quantile=QUANTILE)
+    print(f"MAE: {metrics['mae']:.2f}, Quantile Loss: {metrics['quantile_loss']:.4f}")
     
-    print(f"   Train samples: {result['n_train']}")
-    print(f"   Test samples: {result['n_test']}")
-    print(f"   MAE: {result['metrics']['mae']:.2f}")
-    print(f"   Quantile Loss: {result['metrics']['quantile_loss']:.4f}")
+    # Save plots
+    print("\nSaving plots...")
     
-    print("\nSaving model...")
-    import joblib
-    model_path = os.path.join(models_dir, f'{drug}_model.pkl')
-    joblib.dump(result['model'], model_path)
-    print(f"   Model saved to: {model_path}")
+    # 1. Predictions vs Actual
+    plt.figure(figsize=(10, 6))
+    plt.scatter(yTest, yPred, alpha=0.5, color='steelblue', edgecolors='black')
+    plt.plot([yTest.min(), yTest.max()], [yTest.min(), yTest.max()], 'r--', lw=2)
+    plt.xlabel('Actual Demand')
+    plt.ylabel('Predicted Demand')
+    plt.title(f'{DRUG_NAME} - Predictions vs Actual (MAE={metrics["mae"]:.2f})')
+    plt.grid(alpha=0.3)
+    plt.savefig(f'{FIGURES_DIR}/{DRUG_NAME}_predictions.png', dpi=300, bbox_inches='tight')
+    plt.close()
+    print(f"   Saved: {DRUG_NAME}_predictions.png")
     
-    print("\nGenerating visualizations...")
-    figures_dir = 'reports/figures'
-    os.makedirs(figures_dir, exist_ok=True)
+    # 2. Residuals
+    residuals = yTest - yPred
+    plt.figure(figsize=(10, 6))
+    plt.scatter(yPred, residuals, alpha=0.5, color='coral', edgecolors='black')
+    plt.axhline(y=0, color='r', linestyle='--', lw=2)
+    plt.xlabel('Predicted Demand')
+    plt.ylabel('Residuals')
+    plt.title(f'{DRUG_NAME} - Residual Plot')
+    plt.grid(alpha=0.3)
+    plt.savefig(f'{FIGURES_DIR}/{DRUG_NAME}_residuals.png', dpi=300, bbox_inches='tight')
+    plt.close()
+    print(f"   Saved: {DRUG_NAME}_residuals.png")
     
-    plot_predictions(
-        result['yTest'], 
-        result['predictions'],
-        save_path=os.path.join(figures_dir, f'{drug}_predictions.png')
-    )
-    plot_residuals(
-        result['yTest'],
-        result['predictions'],
-        save_path=os.path.join(figures_dir, f'{drug}_residuals.png')
-    )
+    # 3. Feature Importance
+    feature_importance = pd.DataFrame({
+        'Feature': xTrain.columns,
+        'Importance': model.feature_importances_
+    }).sort_values('Importance', ascending=False).head(15)
     
-    print(f"\nDone! {drug} model trained successfully.")
-    print(f"   Predictions plot: {figures_dir}/{drug}_predictions.png")
-    print(f"   Residuals plot: {figures_dir}/{drug}_residuals.png")
+    plt.figure(figsize=(10, 8))
+    plt.barh(range(len(feature_importance)), feature_importance['Importance'], color='steelblue')
+    plt.yticks(range(len(feature_importance)), feature_importance['Feature'])
+    plt.xlabel('Importance Score')
+    plt.title(f'{DRUG_NAME} - Top 15 Feature Importances')
+    plt.gca().invert_yaxis()
+    plt.tight_layout()
+    plt.savefig(f'{FIGURES_DIR}/{DRUG_NAME}_feature_importance.png', dpi=300, bbox_inches='tight')
+    plt.close()
+    print(f"   Saved: {DRUG_NAME}_feature_importance.png")
+    
+    # 4. Time Series
+    plt.figure(figsize=(14, 6))
+    test_indices = range(len(yTest))
+    plt.plot(test_indices, yTest.values, 'o-', label='Actual', color='blue', alpha=0.6, markersize=4)
+    plt.plot(test_indices, yPred, 's-', label=f'Predicted (q={QUANTILE})', color='red', alpha=0.6, markersize=3)
+    plt.fill_between(test_indices, yTest.values, yPred, alpha=0.2, color='gray')
+    plt.xlabel('Test Sample Index')
+    plt.ylabel('Demand')
+    plt.title(f'{DRUG_NAME} - Time Series Predictions')
+    plt.legend()
+    plt.grid(alpha=0.3)
+    plt.savefig(f'{FIGURES_DIR}/{DRUG_NAME}_timeseries.png', dpi=300, bbox_inches='tight')
+    plt.close()
+    print(f"   Saved: {DRUG_NAME}_timeseries.png")
+    
+    print("\n" + "="*70)
+    print(f"Done! All plots saved to {FIGURES_DIR}/")
+    print("="*70)
 
 
 if __name__ == "__main__":
